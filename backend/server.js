@@ -7,14 +7,22 @@ const PocketOptionWS = require('./websocket/pocket-ws');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// ==================== حل CORS النهائي ====================
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
+
+// معالجة طلبات OPTIONS (preflight)
+app.options('*', cors());
+
 app.use(express.json());
 
 // إعدادات بوكيت أوبشن
 const CONFIG = {
     symbol: process.env.SYMBOL || 'AUD/CHF',
-    market: 'real', // real أو otc
+    market: 'real',
     timeframes: [1, 2, 3, 5],
     minStrength: parseInt(process.env.MIN_SIGNAL_STRENGTH) || 6,
     baseAmount: parseFloat(process.env.BASE_AMOUNT) || 10
@@ -57,7 +65,6 @@ wsClient.on('candle', async (candle) => {
                 botState.currentSignals[market][tf] = signal;
                 botState.history[market].push({ ...signal, timeframe: tf, market });
                 
-                // إضافة إلى الإحصائيات
                 botState.stats[market].totalTrades++;
             }
         }
@@ -131,7 +138,7 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// جلب إشارة معينة (حسب السوق والإطار)
+// جلب إشارة معينة
 app.get('/api/signal/:market/:timeframe', (req, res) => {
     const market = req.params.market;
     const tf = parseInt(req.params.timeframe);
@@ -187,7 +194,7 @@ app.post('/api/settings', (req, res) => {
     res.json({ success: true, config: CONFIG });
 });
 
-// محاكاة نتيجة صفقة (للتجربة)
+// محاكاة نتيجة صفقة
 app.post('/api/simulate-trade', (req, res) => {
     const { market, tradeId, result } = req.body;
     const trade = botState.stats[market]?.trades.find(t => t.id === tradeId);
@@ -199,7 +206,6 @@ app.post('/api/simulate-trade', (req, res) => {
     trade.closedAt = new Date();
     trade.profit = result === 'win' ? trade.amount * 0.8 : -trade.amount;
     
-    // تحديث الإحصائيات
     const marketStats = botState.stats[market];
     const totalWon = marketStats.trades.filter(t => t.status === 'won').length;
     const totalClosed = marketStats.trades.filter(t => t.status !== 'pending').length;
