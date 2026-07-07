@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-// 🔥 الرابط الصحيح حق الـ Backend حطيتـه هنا
+// الرابط الصحيح حق الـ Backend
 const API_URL = 'https://basilisk-bot-7vro.onrender.com/api';
 
 function App() {
