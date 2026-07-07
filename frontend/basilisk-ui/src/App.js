@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// 🔥 الرابط الصحيح حق الـ Backend حطيتـه هنا
+const API_URL = 'https://basilisk-bot-7vro.onrender.com/api';
 
 function App() {
     // States
@@ -36,14 +37,12 @@ function App() {
             setHistory(statusRes.data.lastSignals || { real: [], otc: [] });
             setStats(statusRes.data.stats || { real: { totalTrades: 0, winRate: 0, profit: 0 }, otc: { totalTrades: 0, winRate: 0, profit: 0 } });
             
-            // جلب الصفقات لكل سوق
             const [tradesReal, tradesOtc] = await Promise.all([
                 axios.get(`${API_URL}/trades/real`),
                 axios.get(`${API_URL}/trades/otc`)
             ]);
             setTrades({ real: tradesReal.data.recent || [], otc: tradesOtc.data.recent || [] });
             
-            // تحديث السوق الحالي
             if (marketRes.data.market) {
                 setMarket(marketRes.data.market);
             }
@@ -83,7 +82,6 @@ function App() {
 
     const currentSignal = signals[market]?.[selectedTimeframe] || { action: 'WAIT', strength: 0 };
     const currentStats = stats[market] || { totalTrades: 0, winRate: 0, profit: 0 };
-    const currentHistory = history[market] || [];
     const currentTrades = trades[market] || [];
 
     return (
@@ -95,7 +93,6 @@ function App() {
                 </div>
             </header>
 
-            {/* اختيار السوق */}
             <div className="market-selector">
                 <label>📍 السوق:</label>
                 <button 
@@ -115,7 +112,6 @@ function App() {
                 </span>
             </div>
 
-            {/* اختيار الإطار الزمني */}
             <div className="timeframe-selector">
                 <label>⏱ الإطار:</label>
                 {timeframes.map(tf => (
@@ -133,7 +129,6 @@ function App() {
             </div>
 
             <div className="main-container">
-                {/* بطاقة الإشارة */}
                 <div className="signal-card" style={{ borderColor: getSignalColor(currentSignal.action) }}>
                     <div className="signal-header">
                         <span className="signal-market">{getMarketEmoji(market)} {getMarketLabel(market)}</span>
@@ -170,7 +165,6 @@ function App() {
                     )}
                 </div>
 
-                {/* الإحصائيات */}
                 <div className="stats-grid">
                     <div className="stat-card">
                         <h3>📊 إجمالي الصفقات</h3>
@@ -186,17 +180,13 @@ function App() {
                     </div>
                 </div>
 
-                {/* المؤشرات */}
                 {currentSignal.indicators && Object.keys(currentSignal.indicators).length > 0 && (
                     <div className="indicators-grid">
                         <h3>📊 المؤشرات الفنية {market === 'otc' && '(مع مؤشرات OTC)'}</h3>
                         {Object.entries(currentSignal.indicators).map(([key, value]) => {
-                            // تجاهل القيم الرقمية الطويلة
                             if (key.includes('_value') || key === 'score_diff') return null;
                             
-                            let displayValue = value;
                             let className = '';
-                            
                             if (typeof value === 'string') {
                                 if (['oversold', 'bullish', 'below_lower', 'up', 'high_bullish', 'expanded', 'spike', 'strong'].includes(value)) {
                                     className = 'bullish';
@@ -205,7 +195,6 @@ function App() {
                                 }
                             }
                             
-                            // تنسيق أسماء المؤشرات
                             let label = key.replace('_', ' ').toUpperCase();
                             if (key.startsWith('otc_')) {
                                 label = '⚡ ' + label.replace('OTC ', '');
@@ -223,7 +212,6 @@ function App() {
                     </div>
                 )}
 
-                {/* آخر الصفقات */}
                 {currentTrades.length > 0 && (
                     <div className="trades-history">
                         <h3>📋 آخر الصفقات - {getMarketLabel(market)}</h3>
