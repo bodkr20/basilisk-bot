@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = 'https://basilisk-api-z5pd.onrender.com';
+const API_URL = 'https://basilisk-api-z5pd.onrender.com/api';
+
+console.log('API URL:', API_URL);
 
 function App() {
     const [market, setMarket] = useState('real');
@@ -17,7 +19,6 @@ function App() {
 
     const timeframes = [1, 2, 3, 5];
 
-    // جلب البيانات كل 10 ثواني (بدل 3 ثواني عشان نبطئ)
     useEffect(() => {
         const interval = setInterval(() => {
             fetchData();
@@ -28,7 +29,9 @@ function App() {
 
     const fetchData = async () => {
         try {
+            console.log('جاري جلب البيانات من:', API_URL + '/status');
             const response = await axios.get(`${API_URL}/status`);
+            console.log('البيانات:', response.data);
             setIsConnected(response.data.isRunning);
             setSignals(response.data.currentSignals || { real: {}, otc: {} });
             setStats(response.data.stats || { 
