@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = 'https://basilisk-api-z5pd.onrender.com/api';
+const API_URL = 'https://basilisk-api-z5pd.onrender.com';
 
 function App() {
     const [market, setMarket] = useState('real');
