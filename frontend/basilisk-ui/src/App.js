@@ -3,7 +3,7 @@ import axios from 'axios';
 import './App.css';
 
 // الرابط الصحيح حق الـ Backend
-const API_URL = 'https://basilisk-bot-7vro.onrender.com/api';
+const API_URL = 'https://basilisk-api-z5pd.onrender.com/api';
 
 function App() {
     // States
