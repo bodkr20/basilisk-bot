@@ -5,7 +5,6 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ أهم نقطة: سماح مطلق للاتصالات (CORS)
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -14,7 +13,7 @@ app.use(cors({
 app.options('*', cors());
 app.use(express.json());
 
-// ✅ نقطة نهاية بسيطة للاختبار (بتستقبل أي طلب وتجاوب)
+// ✅ المسار الجديد للاختبار
 app.get('/api/status', (req, res) => {
     res.json({
         isRunning: true,
@@ -23,7 +22,6 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// ✅ نقطة نهاية ترحب بأي اتصال
 app.get('/', (req, res) => {
     res.json({ message: "✅ Basilisk API is running!" });
 });
