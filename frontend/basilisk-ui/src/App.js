@@ -2,52 +2,43 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-// الرابط الصحيح حق الـ Backend
 const API_URL = 'https://basilisk-api-z5pd.onrender.com/api';
 
 function App() {
-    // States
     const [market, setMarket] = useState('real');
     const [selectedTimeframe, setSelectedTimeframe] = useState(1);
     const [signals, setSignals] = useState({ real: {}, otc: {} });
-    const [history, setHistory] = useState({ real: [], otc: [] });
     const [isConnected, setIsConnected] = useState(false);
-    const [stats, setStats] = useState({ real: { totalTrades: 0, winRate: 0, profit: 0 }, otc: { totalTrades: 0, winRate: 0, profit: 0 } });
-    const [trades, setTrades] = useState({ real: [], otc: [] });
+    const [stats, setStats] = useState({ 
+        real: { totalTrades: 0, winRate: 0, profit: 0 }, 
+        otc: { totalTrades: 0, winRate: 0, profit: 0 } 
+    });
+    const [loading, setLoading] = useState(true);
 
     const timeframes = [1, 2, 3, 5];
 
+    // جلب البيانات كل 10 ثواني (بدل 3 ثواني عشان نبطئ)
     useEffect(() => {
         const interval = setInterval(() => {
             fetchData();
-        }, 3000);
+        }, 10000);
         fetchData();
         return () => clearInterval(interval);
     }, []);
 
     const fetchData = async () => {
         try {
-            const [statusRes, marketRes] = await Promise.all([
-                axios.get(`${API_URL}/status`),
-                axios.get(`${API_URL}/market`)
-            ]);
-            
-            setIsConnected(statusRes.data.isRunning);
-            setSignals(statusRes.data.currentSignals || { real: {}, otc: {} });
-            setHistory(statusRes.data.lastSignals || { real: [], otc: [] });
-            setStats(statusRes.data.stats || { real: { totalTrades: 0, winRate: 0, profit: 0 }, otc: { totalTrades: 0, winRate: 0, profit: 0 } });
-            
-            const [tradesReal, tradesOtc] = await Promise.all([
-                axios.get(`${API_URL}/trades/real`),
-                axios.get(`${API_URL}/trades/otc`)
-            ]);
-            setTrades({ real: tradesReal.data.recent || [], otc: tradesOtc.data.recent || [] });
-            
-            if (marketRes.data.market) {
-                setMarket(marketRes.data.market);
-            }
+            const response = await axios.get(`${API_URL}/status`);
+            setIsConnected(response.data.isRunning);
+            setSignals(response.data.currentSignals || { real: {}, otc: {} });
+            setStats(response.data.stats || { 
+                real: { totalTrades: 0, winRate: 0, profit: 0 }, 
+                otc: { totalTrades: 0, winRate: 0, profit: 0 } 
+            });
+            setLoading(false);
         } catch (error) {
             console.error('خطأ في جلب البيانات:', error);
+            setLoading(false);
         }
     };
 
@@ -72,17 +63,19 @@ function App() {
         return '⏳';
     };
 
-    const getMarketLabel = (m) => {
-        return m === 'real' ? '📈 العادي' : '🔄 OTC';
-    };
-
-    const getMarketEmoji = (m) => {
-        return m === 'real' ? '📈' : '🔄';
-    };
-
     const currentSignal = signals[market]?.[selectedTimeframe] || { action: 'WAIT', strength: 0 };
     const currentStats = stats[market] || { totalTrades: 0, winRate: 0, profit: 0 };
-    const currentTrades = trades[market] || [];
+
+    if (loading) {
+        return (
+            <div className="App">
+                <header className="App-header">
+                    <h1>🦎 Basilisk Scanner</h1>
+                    <div className="status">⏳ جاري التحميل...</div>
+                </header>
+            </div>
+        );
+    }
 
     return (
         <div className="App">
@@ -130,10 +123,6 @@ function App() {
 
             <div className="main-container">
                 <div className="signal-card" style={{ borderColor: getSignalColor(currentSignal.action) }}>
-                    <div className="signal-header">
-                        <span className="signal-market">{getMarketEmoji(market)} {getMarketLabel(market)}</span>
-                        <span className="signal-timeframe">⏱ {selectedTimeframe}m</span>
-                    </div>
                     <div className="signal-emoji">{getSignalEmoji(currentSignal.action)}</div>
                     <div className="signal-action">{currentSignal.action || 'WAIT'}</div>
                     <div className="signal-strength">
@@ -150,18 +139,6 @@ function App() {
                     </div>
                     {currentSignal.volume && (
                         <div className="signal-volume">💰 المبلغ المقترح: ${currentSignal.volume}</div>
-                    )}
-                    {currentSignal.prices && (
-                        <div className="signal-price">
-                            📊 السعر: {currentSignal.prices.close}
-                            <span className="price-detail"> (H: {currentSignal.prices.high} / L: {currentSignal.prices.low})</span>
-                        </div>
-                    )}
-                    {currentSignal.indicators && currentSignal.indicators.otc_volatility && (
-                        <div className="otc-badge">
-                            ⚡ OTC: تقلب {currentSignal.indicators.otc_volatility}
-                            {currentSignal.indicators.otc_volume === 'spike' && ' 🔥 حجم مرتفع'}
-                        </div>
                     )}
                 </div>
 
@@ -209,30 +186,6 @@ function App() {
                                 </div>
                             );
                         })}
-                    </div>
-                )}
-
-                {currentTrades.length > 0 && (
-                    <div className="trades-history">
-                        <h3>📋 آخر الصفقات - {getMarketLabel(market)}</h3>
-                        <div className="trades-list">
-                            {currentTrades.slice().reverse().slice(0, 10).map((trade, index) => (
-                                <div key={index} className={`trade-item ${trade.status || 'pending'}`}>
-                                    <span className="trade-type">{trade.type}</span>
-                                    <span className="trade-timeframe">{trade.timeframe}m</span>
-                                    <span className="trade-amount">${trade.amount}</span>
-                                    <span className="trade-status">
-                                        {trade.status === 'pending' ? '⏳' : 
-                                         trade.status === 'won' ? '✅' : '❌'}
-                                    </span>
-                                    {trade.profit !== undefined && (
-                                        <span className={`trade-profit ${trade.profit > 0 ? 'positive' : 'negative'}`}>
-                                            ${trade.profit.toFixed(2)}
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
                     </div>
                 )}
             </div>
