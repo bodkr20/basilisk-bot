@@ -2,7 +2,7 @@
   "name": "basilisk-ui",
   "version": "2.0.0",
   "private": true,
-  "homepage": "https://basilisk-ui.onrender.com",
+  "homepage": ".",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
