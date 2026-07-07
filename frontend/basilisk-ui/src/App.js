@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
+// ✅ الرابط الصحيح للـ API
 const API_URL = 'https://basilisk-api-z5pd.onrender.com/api';
-
-console.log('API URL:', API_URL);
 
 function App() {
     const [market, setMarket] = useState('real');
@@ -16,31 +15,35 @@ function App() {
         otc: { totalTrades: 0, winRate: 0, profit: 0 } 
     });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const timeframes = [1, 2, 3, 5];
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            fetchData();
-        }, 10000);
         fetchData();
+        const interval = setInterval(fetchData, 15000); // كل 15 ثانية
         return () => clearInterval(interval);
     }, []);
 
     const fetchData = async () => {
         try {
-            console.log('جاري جلب البيانات من:', API_URL + '/status');
-            const response = await axios.get(`${API_URL}/status`);
-            console.log('البيانات:', response.data);
-            setIsConnected(response.data.isRunning);
+            setError(null);
+            const response = await axios.get(`${API_URL}/status`, {
+                timeout: 10000 // 10 ثواني timeout
+            });
+            
+            console.log('✅ البيانات جات:', response.data);
+            
+            setIsConnected(response.data.isRunning || false);
             setSignals(response.data.currentSignals || { real: {}, otc: {} });
             setStats(response.data.stats || { 
                 real: { totalTrades: 0, winRate: 0, profit: 0 }, 
                 otc: { totalTrades: 0, winRate: 0, profit: 0 } 
             });
             setLoading(false);
-        } catch (error) {
-            console.error('خطأ في جلب البيانات:', error);
+        } catch (err) {
+            console.error('❌ خطأ:', err.message);
+            setError('تعذر الاتصال بالسيرفر');
             setLoading(false);
         }
     };
@@ -76,6 +79,24 @@ function App() {
                     <h1>🦎 Basilisk Scanner</h1>
                     <div className="status">⏳ جاري التحميل...</div>
                 </header>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="App">
+                <header className="App-header">
+                    <h1>🦎 Basilisk Scanner</h1>
+                    <div className="status" style={{ color: '#f44336' }}>❌ {error}</div>
+                </header>
+                <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <p>❌ تعذر الاتصال بالسيرفر</p>
+                    <p style={{ fontSize: '12px', color: '#888' }}>API: {API_URL}</p>
+                    <button onClick={fetchData} style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>
+                        🔄 إعادة المحاولة
+                    </button>
+                </div>
             </div>
         );
     }
