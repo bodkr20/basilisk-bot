@@ -7,19 +7,16 @@ const PocketOptionWS = require('./websocket/pocket-ws');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ==================== حل CORS النهائي ====================
+// ✅ CORS مفتوح للجميع
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-// معالجة طلبات OPTIONS (preflight)
 app.options('*', cors());
-
 app.use(express.json());
 
-// إعدادات بوكيت أوبشن
 const CONFIG = {
     symbol: process.env.SYMBOL || 'AUD/CHF',
     market: 'real',
@@ -28,7 +25,6 @@ const CONFIG = {
     baseAmount: parseFloat(process.env.BASE_AMOUNT) || 10
 };
 
-// حالة البوت
 const botState = {
     isRunning: false,
     market: 'real',
@@ -46,11 +42,9 @@ const botState = {
     }
 };
 
-// تهيئة اتصال WebSocket
 const wsClient = new PocketOptionWS();
 wsClient.connect();
 
-// عند استقبال شمعة جديدة
 wsClient.on('candle', async (candle) => {
     const market = candle.market || 'real';
     console.log(`📊 شمعة ${market.toUpperCase()}: ${candle.asset} - سعر الإغلاق: ${candle.close}`);
@@ -61,10 +55,8 @@ wsClient.on('candle', async (candle) => {
             
             if (signal && signal.action !== 'WAIT' && signal.strength >= CONFIG.minStrength) {
                 console.log(`🚨 إشارة ${signal.action} على ${tf}m - سوق ${market.toUpperCase()} (القوة: ${signal.strength})`);
-                
                 botState.currentSignals[market][tf] = signal;
                 botState.history[market].push({ ...signal, timeframe: tf, market });
-                
                 botState.stats[market].totalTrades++;
             }
         }
@@ -73,7 +65,6 @@ wsClient.on('candle', async (candle) => {
     }
 });
 
-// دالة تحليل الشمعة
 async function analyzeCandle(candle, timeframe, market) {
     return new Promise((resolve) => {
         const pythonProcess = spawn('python', [
@@ -104,7 +95,6 @@ async function analyzeCandle(candle, timeframe, market) {
 
 // ==================== API Routes ====================
 
-// تبديل السوق
 app.post('/api/market', (req, res) => {
     const { market } = req.body;
     if (market && ['real', 'otc'].includes(market)) {
@@ -117,12 +107,10 @@ app.post('/api/market', (req, res) => {
     }
 });
 
-// جلب السوق الحالي
 app.get('/api/market', (req, res) => {
     res.json({ market: CONFIG.market || 'real' });
 });
 
-// جلب الحالة العامة
 app.get('/api/status', (req, res) => {
     res.json({
         isRunning: wsClient.isConnected,
@@ -138,7 +126,6 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// جلب إشارة معينة
 app.get('/api/signal/:market/:timeframe', (req, res) => {
     const market = req.params.market;
     const tf = parseInt(req.params.timeframe);
@@ -149,7 +136,6 @@ app.get('/api/signal/:market/:timeframe', (req, res) => {
     }
 });
 
-// جلب تاريخ الإشارات
 app.get('/api/history/:market', (req, res) => {
     const market = req.params.market;
     if (botState.history[market]) {
@@ -159,7 +145,6 @@ app.get('/api/history/:market', (req, res) => {
     }
 });
 
-// جلب إحصائيات السوق
 app.get('/api/stats/:market', (req, res) => {
     const market = req.params.market;
     if (botState.stats[market]) {
@@ -169,7 +154,6 @@ app.get('/api/stats/:market', (req, res) => {
     }
 });
 
-// جلب جميع الصفقات
 app.get('/api/trades/:market', (req, res) => {
     const market = req.params.market;
     if (botState.stats[market]) {
@@ -184,7 +168,6 @@ app.get('/api/trades/:market', (req, res) => {
     }
 });
 
-// تحديث الإعدادات
 app.post('/api/settings', (req, res) => {
     const { symbol, timeframes, minStrength, baseAmount } = req.body;
     if (symbol) CONFIG.symbol = symbol;
@@ -194,7 +177,6 @@ app.post('/api/settings', (req, res) => {
     res.json({ success: true, config: CONFIG });
 });
 
-// محاكاة نتيجة صفقة
 app.post('/api/simulate-trade', (req, res) => {
     const { market, tradeId, result } = req.body;
     const trade = botState.stats[market]?.trades.find(t => t.id === tradeId);
@@ -215,7 +197,11 @@ app.post('/api/simulate-trade', (req, res) => {
     res.json({ success: true, trade });
 });
 
-// تشغيل السيرفر
+// ✅ إضافة route اختبار بسيط
+app.get('/', (req, res) => {
+    res.json({ message: 'Basilisk API is running!' });
+});
+
 app.listen(PORT, () => {
     console.log(`
     ═══════════════════════════════════════
