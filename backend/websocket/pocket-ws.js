@@ -14,54 +14,69 @@ class PocketOptionWS extends EventEmitter {
     }
 
     connect() {
-        const wsUrl = process.env.POCKET_WS_URL || 'wss://ws.pocketoption.com/echo/websocket';
+        // ✅ روابط WebSocket بديلة للتجربة
+        const wsUrls = [
+            'wss://ws.pocketoption.com/echo/websocket',
+            'wss://ws.pocketoption.com/echo',
+            'wss://ws.binaryoptions.com/echo/websocket'
+        ];
         
-        console.log('🔄 جاري الاتصال بـ Pocket Option...');
+        const wsUrl = wsUrls[0]; // جرب الأول، وإذا ما اشتغل غيره يدويًا
+        console.log('🔄 جاري الاتصال بـ Pocket Option WebSocket...');
+        console.log(`📍 الرابط: ${wsUrl}`);
         
-        this.ws = new WebSocket(wsUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        });
+        try {
+            this.ws = new WebSocket(wsUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
 
-        this.ws.on('open', () => {
-            console.log('✅ متصل بـ Pocket Option WebSocket');
-            this.isConnected = true;
-            this.reconnectAttempts = 0;
-            this.emit('connected');
-            this.startPing();
-            this.authenticate();
-        });
+            this.ws.on('open', () => {
+                console.log('✅ متصل بـ Pocket Option WebSocket');
+                this.isConnected = true;
+                this.reconnectAttempts = 0;
+                this.emit('connected');
+                this.startPing();
+                this.subscribeToChannels();
+            });
 
-        this.ws.on('message', (data) => {
-            try {
-                const message = JSON.parse(data);
-                this.handleMessage(message);
-            } catch (e) {
-                // تجاهل
-            }
-        });
+            this.ws.on('message', (data) => {
+                try {
+                    const message = JSON.parse(data);
+                    this.handleMessage(message);
+                } catch (e) {
+                    // تجاهل الأخطاء
+                }
+            });
 
-        this.ws.on('close', () => {
-            console.log('❌ تم قطع الاتصال');
-            this.isConnected = false;
-            this.stopPing();
-            this.reconnect();
-        });
+            this.ws.on('close', (code, reason) => {
+                console.log(`❌ تم قطع الاتصال (الكود: ${code})`);
+                this.isConnected = false;
+                this.stopPing();
+                setTimeout(() => this.reconnect(), 3000);
+            });
 
-        this.ws.on('error', (error) => {
-            console.error('⚠️ خطأ في WebSocket:', error.message);
-        });
+            this.ws.on('error', (error) => {
+                console.error('⚠️ خطأ في WebSocket:', error.message);
+            });
+        } catch (error) {
+            console.error('❌ فشل إنشاء اتصال WebSocket:', error.message);
+            setTimeout(() => this.reconnect(), 5000);
+        }
+    }
+
+    subscribeToChannels() {
+        const symbol = process.env.SYMBOL || 'AUD/CHF';
+        const timeframe = parseInt(process.env.TIMEFRAME || 60);
+        this.subscribeToCandles(symbol, timeframe);
     }
 
     setMarket(market) {
         this.currentMarket = market;
         console.log(`🔄 تم التبديل إلى سوق ${market === 'real' ? 'Real (العادي)' : 'OTC'}`);
         
-        // إعادة الاشتراك
-        this.subscriptions.forEach(sub => {
-            this.unsubscribe(sub);
-        });
+        this.subscriptions.forEach(sub => this.unsubscribe(sub));
         this.subscriptions.clear();
         
         const symbol = process.env.SYMBOL || 'AUD/CHF';
@@ -69,24 +84,7 @@ class PocketOptionWS extends EventEmitter {
         this.subscribeToCandles(symbol, timeframe);
     }
 
-    authenticate() {
-        const authMessage = {
-            name: "candle-generated",
-            msg: {
-                name: "candle-generated",
-                version: 1.0,
-                body: []
-            }
-        };
-        this.send(authMessage);
-        
-        const symbol = process.env.SYMBOL || 'AUD/CHF';
-        const timeframe = parseInt(process.env.TIMEFRAME || 60);
-        this.subscribeToCandles(symbol, timeframe);
-    }
-
     subscribeToCandles(asset, timeframe = 60) {
-        // إرسال طلب اشتراك مع نوع السوق
         const subscription = {
             name: "subscribe",
             msg: {
@@ -94,7 +92,7 @@ class PocketOptionWS extends EventEmitter {
                 params: {
                     asset: asset,
                     timeframe: timeframe,
-                    market: this.currentMarket // إضافة نوع السوق
+                    market: this.currentMarket
                 }
             }
         };
@@ -124,10 +122,11 @@ class PocketOptionWS extends EventEmitter {
     }
 
     handleMessage(message) {
-        if (message.name === 'candle-generated') {
+        if (message.name === 'candle-generated' || message.name === 'candle') {
             try {
-                const candleData = message.msg.body;
-                if (Array.isArray(candleData) && candleData.length > 0) {
+                let candleData = message.msg?.body || message.body || [];
+                if (!Array.isArray(candleData)) candleData = [candleData];
+                if (candleData.length > 0) {
                     const candle = candleData[0];
                     this.emit('candle', {
                         asset: candle.asset || process.env.SYMBOL || 'AUD/CHF',
@@ -142,13 +141,13 @@ class PocketOptionWS extends EventEmitter {
                     });
                 }
             } catch (e) {
-                // تجاهل
+                console.error('خطأ في معالجة الرسالة:', e);
             }
         }
     }
 
     send(data) {
-        if (this.ws && this.isConnected) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             try {
                 this.ws.send(JSON.stringify(data));
             } catch (e) {
@@ -159,7 +158,7 @@ class PocketOptionWS extends EventEmitter {
 
     startPing() {
         this.pingInterval = setInterval(() => {
-            if (this.isConnected) {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.send({ name: "ping" });
             }
         }, 30000);
@@ -179,6 +178,7 @@ class PocketOptionWS extends EventEmitter {
             setTimeout(() => this.connect(), 5000 * this.reconnectAttempts);
         } else {
             console.log('❌ فشل إعادة الاتصال بعد عدة محاولات');
+            this.emit('connection_failed');
         }
     }
 
