@@ -1,41 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🦎 Basilisk Scanner</title>
-    <style>
-        body { background: #0a0a1a; color: white; font-family: Arial; padding: 20px; }
-        .box { background: #1a1a3e; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; }
-        button { background: #7b2ffc; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-        pre { background: #0a0a1a; padding: 10px; border-radius: 5px; overflow-x: auto; }
-        .connected { color: #4caf50; }
-        .disconnected { color: #f44336; }
-    </style>
+    <title>Basilisk Scanner</title>
 </head>
-<body>
-    <div class="box">
-        <h1>🦎 Basilisk Scanner</h1>
-        <div id="status" class="disconnected">⏳ جاري التحميل...</div>
-        <button onclick="fetchData()">🔄 تحديث</button>
-        <pre id="data"></pre>
-    </div>
-
+<body style="background:#0a0a1a;color:#fff;font-family:sans-serif;padding:20px;">
+    <h1>🦎 Basilisk Scanner</h1>
+    <p id="status">⏳ جاري التحميل...</p>
+    <pre id="data" style="background:#1a1a3e;padding:15px;border-radius:8px;"></pre>
+    <button onclick="fetchData()" style="background:#7b2ffc;color:#fff;border:none;padding:10px 20px;border-radius:5px;">تحديث</button>
     <script>
-        // 🔥 الرابط الصحيح للـ API
-        const API_URL = 'https://basilisk-api-z5pd.onrender.com';
-
         async function fetchData() {
             try {
-                const response = await fetch(`${API_URL}/api/status`);
-                const data = await response.json();
-                const statusEl = document.getElementById('status');
-                statusEl.innerHTML = '🟢 متصل';
-                statusEl.className = 'connected';
+                const res = await fetch('https://basilisk-api.onrender.com/api/status');
+                const data = await res.json();
+                document.getElementById('status').innerHTML = '🟢 متصل';
                 document.getElementById('data').textContent = JSON.stringify(data, null, 2);
-            } catch (error) {
-                const statusEl = document.getElementById('status');
-                statusEl.innerHTML = '🔴 غير متصل - ' + error.message;
-                statusEl.className = 'disconnected';
-                document.getElementById('data').textContent = '❌ خطأ: ' + error.message;
+            } catch(e) {
+                document.getElementById('status').innerHTML = '🔴 غير متصل: ' + e.message;
+                document.getElementById('data').textContent = 'خطأ: ' + e.message;
             }
         }
         fetchData();
