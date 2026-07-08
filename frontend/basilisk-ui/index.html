@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🦎 Basilisk Scanner</title>
+    <style>
+        body { background: #0a0a1a; color: white; font-family: Arial; padding: 20px; }
+        .box { background: #1a1a3e; padding: 20px; border-radius: 10px; max-width: 500px; margin: auto; }
+        button { background: #7b2ffc; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        pre { background: #0a0a1a; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .connected { color: #4caf50; }
+        .disconnected { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>🦎 Basilisk Scanner</h1>
+        <div id="status" class="disconnected">⏳ جاري التحميل...</div>
+        <button onclick="fetchData()">🔄 تحديث</button>
+        <pre id="data"></pre>
+    </div>
+
+    <script>
+        // 🔥 الرابط الصحيح للـ API
+        const API_URL = 'https://basilisk-api-z5pd.onrender.com';
+
+        async function fetchData() {
+            try {
+                const response = await fetch(`${API_URL}/api/status`);
+                const data = await response.json();
+                const statusEl = document.getElementById('status');
+                statusEl.innerHTML = '🟢 متصل';
+                statusEl.className = 'connected';
+                document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                const statusEl = document.getElementById('status');
+                statusEl.innerHTML = '🔴 غير متصل - ' + error.message;
+                statusEl.className = 'disconnected';
+                document.getElementById('data').textContent = '❌ خطأ: ' + error.message;
+            }
+        }
+        fetchData();
+        setInterval(fetchData, 5000);
+    </script>
+</body>
+</html>
